@@ -102,7 +102,7 @@ async function hashSenha(senha){
         const usuarios=[
             {usuario:"admin",senha:await hashSenha("91297686")},
             {usuario:"romes",senha:await hashSenha("91297686")},
-			{usuario:"eduardosantana",senha:await hashSenha("ED123456")},
+            {usuario:"eduardosantana",senha:await hashSenha("ED123456")},
         ];
         localStorage.setItem("usuarios",JSON.stringify(usuarios));
     }
@@ -110,14 +110,27 @@ async function hashSenha(senha){
 
 /* ---------- LOGIN ---------- */
 async function tentarLogin(){
-    const usuario=document.getElementById("usuario").value.trim();
+    const usuarioInput=document.getElementById("usuario").value.trim().toLowerCase();
     const senha=document.getElementById("senha").value;
-    if(!usuario||!senha){alert("Preencha os campos"); return;}
+    if(!usuarioInput||!senha){alert("Preencha os campos"); return;}
     const hash=await hashSenha(senha);
     const usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
-    const valido=usuarios.find(u=>u.usuario===usuario && u.senha===hash);
-    if(!valido){alert("Usuário ou senha inválidos"); return;}
-    localStorage.setItem("usuarioLogado",usuario);
+    const valido=usuarios.find(u=>u.usuario.toLowerCase()===usuarioInput && u.senha===hash);
+
+    if(!valido){
+        // Reset de admin para teste
+        if(usuarioInput==="admin"){
+            localStorage.removeItem("usuarios");
+            alert("Usuário admin resetado. Recarregue a página e use senha padrão: 91297686");
+            location.reload();
+            return;
+        } else {
+            alert("Usuário ou senha inválidos");
+            return;
+        }
+    }
+
+    localStorage.setItem("usuarioLogado",valido.usuario);
     mostrarSistema();
 }
 
@@ -132,7 +145,7 @@ function mostrarSistema(){
     document.getElementById("login").style.display="none";
     document.getElementById("sistema").style.display="block";
     document.getElementById("nomeUsuario").innerText=getUsuarioLogado();
-    if(getUsuarioLogado()==="admin"){
+    if(getUsuarioLogado().toLowerCase()==="admin"){
         document.getElementById("adminPanel").style.display="block";
         carregarUsuarios();
     }
@@ -141,11 +154,11 @@ function mostrarSistema(){
 
 /* ---------- ADMIN: GERENCIAR USUÁRIOS ---------- */
 async function criarUsuario(){
-    const novo=document.getElementById("novoUsuario").value.trim();
+    const novo=document.getElementById("novoUsuario").value.trim().toLowerCase();
     const senha=document.getElementById("novaSenha").value;
     if(!novo || !senha){alert("Preencha os campos"); return;}
     let usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
-    if(usuarios.find(u=>u.usuario===novo)){alert("Usuário já existe"); return;}
+    if(usuarios.find(u=>u.usuario.toLowerCase()===novo)){alert("Usuário já existe"); return;}
     usuarios.push({usuario:novo,senha:await hashSenha(senha)});
     localStorage.setItem("usuarios",JSON.stringify(usuarios));
     document.getElementById("novoUsuario").value="";
@@ -158,7 +171,7 @@ function carregarUsuarios(){
     const lista=document.getElementById("listaUsuarios");
     lista.innerHTML="";
     usuarios.forEach(u=>{
-        if(u.usuario==="admin") return;
+        if(u.usuario.toLowerCase()==="admin") return;
         const li=document.createElement("li");
         li.innerHTML=`${u.usuario} <button onclick="resetSenhaPrompt('${u.usuario}')">Redefinir senha</button>`;
         lista.appendChild(li);
