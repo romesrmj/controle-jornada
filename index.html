@@ -2,269 +2,280 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Controle de Jornada</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<title>Controle de Jornada - Multiusuário com Admin</title>
 <style>
-body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
-    padding: 20px;
-}
-h1, h2 {
-    text-align: center;
-}
-.container {
-    background: #fff;
-    padding: 20px;
-    margin: 20px auto;
-    max-width: 900px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,.1);
-}
-input, select, button {
-    width: 100%;
-    padding: 8px;
-    margin: 6px 0;
-}
-button {
-    background: #4CAF50;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-}
-button:hover {
-    background: #45a049;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: center;
-}
-th {
-    background: #eee;
-}
-.aberto {
-    background: #fff3cd;
-}
-.fechado {
-    background: #d4edda;
-}
+body { font-family: Arial, sans-serif; margin:20px; background:#f4f4f4;}
+h1,h2,h3{text-align:center;}
+.form-container{max-width:500px;margin:20px auto;padding:20px;background:#fff;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
+input,select,button{width:100%;padding:10px;margin:10px 0;font-size:16px;}
+button{background:#4CAF50;color:white;border:none;cursor:pointer;}
+button:hover{background:#45a049;}
+table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+th,td{border:1px solid #ddd;padding:10px;text-align:center;}
+th{background:#f2f2f2;}
+#sistema{display:none;}
+#logout{float:right;margin-right:20px;cursor:pointer;color:#f00;font-weight:bold;}
+.fechado{background-color:#e0ffe0;}
 </style>
 </head>
-
 <body>
 
-<h1>Controle de Jornada de Trabalho</h1>
+<h1>Controle de Jornada</h1>
 
-<div class="container">
-    <h2>Registrar Jornada</h2>
-
-    <input id="nome" placeholder="Nome do colaborador">
-
-    <select id="dia">
-        <script>
-            for (let i = 1; i <= 31; i++) {
-                document.write(`<option value="${i}">${i}</option>`);
-            }
-        </script>
-    </select>
-
-    <label>Entrada</label>
-    <input type="time" id="entrada">
-
-    <label>Início do almoço</label>
-    <input type="time" id="almoco">
-
-    <label>Retorno do almoço</label>
-    <input type="time" id="retorno">
-
-    <button onclick="registrar()">Registrar</button>
+<!-- LOGIN -->
+<div id="login">
+    <div class="form-container">
+        <h2>Login</h2>
+        <input type="text" id="usuario" placeholder="Usuário">
+        <input type="password" id="senha" placeholder="Senha">
+        <button onclick="tentarLogin()">Entrar</button>
+    </div>
 </div>
 
-<div class="container">
-    <h2>Registros Abertos (Fechar no dia seguinte)</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Data</th>
-                <th>Entrada</th>
-                <th>Saída Estimada</th>
-                <th>Saída Real</th>
-                <th>Ação</th>
-            </tr>
-        </thead>
-        <tbody id="abertos"></tbody>
-    </table>
-</div>
+<!-- SISTEMA -->
+<div id="sistema">
+    <span id="logout" onclick="logout()">Sair</span>
+    <h2>Bem-vindo, <span id="nomeUsuario"></span></h2>
 
-<div class="container">
-    <h2>Histórico</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Data</th>
-                <th>Entrada</th>
-                <th>Saída Estimada</th>
-                <th>Saída Real</th>
-                <th>Banco</th>
-            </tr>
-        </thead>
-        <tbody id="historico"></tbody>
-    </table>
+    <div id="adminPanel" class="form-container" style="display:none;">
+        <h3>Admin - Gerenciar Usuários</h3>
+        <input type="text" id="novoUsuario" placeholder="Novo usuário">
+        <input type="password" id="novaSenha" placeholder="Senha do novo usuário">
+        <button onclick="criarUsuario()">Criar Usuário</button>
+        <h4>Lista de Usuários</h4>
+        <ul id="listaUsuarios"></ul>
+    </div>
 
-    <h3 id="saldoMensal"></h3>
+    <div class="form-container">
+        <label>Data do Registro:</label>
+        <input type="date" id="data">
+
+        <label>Entrada:</label>
+        <input type="time" id="entrada">
+
+        <label>Almoço:</label>
+        <input type="time" id="almoco">
+
+        <label>Retorno:</label>
+        <input type="time" id="retorno">
+
+        <button onclick="registrar()">Registrar</button>
+    </div>
+
+    <div class="form-container">
+        <h2>Registros Abertos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Dia</th><th>Entrada</th><th>Almoço</th><th>Retorno</th><th>Saída Estimada</th><th>Saída Real</th><th>Banco</th><th>Ação</th>
+                </tr>
+            </thead>
+            <tbody id="abertos"></tbody>
+        </table>
+    </div>
+
+    <div class="form-container">
+        <h2>Histórico</h2>
+        <div id="historico"></div>
+    </div>
 </div>
 
 <script>
-const JORNADA = 8 * 60 + 48;
+/* CONFIGURAÇÃO */
+const JORNADA = 8*60+48;
 
-document.addEventListener("DOMContentLoaded", carregarTudo);
+/* USUÁRIOS INICIAIS */
+if(!localStorage.getItem("usuarios")){
+    localStorage.setItem("usuarios",JSON.stringify([
+        {usuario:"admin",senha:"91297686"},
+        {usuario:"joao",senha:"abcd"}
+    ]));
+}
 
-function registrar() {
-    const nome = nomeInput.value;
-    const dia = diaInput.value;
-    const entrada = entradaInput.value;
-    const almoco = almocoInput.value;
-    const retorno = retornoInput.value;
+/* LOGIN */
+function tentarLogin(){
+    const usuario=document.getElementById("usuario").value;
+    const senha=document.getElementById("senha").value;
+    const usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
+    const valido=usuarios.find(u=>u.usuario===usuario && u.senha===senha);
+    if(!valido){alert("Usuário ou senha inválidos"); return;}
+    localStorage.setItem("usuarioLogado",usuario);
+    mostrarSistema();
+}
 
-    if (!nome || !entrada || !almoco || !retorno) {
-        alert("Preencha todos os campos");
-        return;
+function logout(){
+    localStorage.removeItem("usuarioLogado");
+    location.reload();
+}
+
+function getUsuarioLogado(){return localStorage.getItem("usuarioLogado");}
+
+function mostrarSistema(){
+    document.getElementById("login").style.display="none";
+    document.getElementById("sistema").style.display="block";
+    document.getElementById("nomeUsuario").innerText=getUsuarioLogado();
+    if(getUsuarioLogado()==="admin"){
+        document.getElementById("adminPanel").style.display="block";
+        carregarUsuarios();
     }
+    carregarTudo();
+}
 
-    const registros = getRegistros();
-    const saidaEstimada = emHora(
-        emMin(entrada) + JORNADA + (emMin(retorno) - emMin(almoco))
-    );
+/* ADMIN: GERENCIAR USUÁRIOS */
+function criarUsuario(){
+    const novo=document.getElementById("novoUsuario").value.trim();
+    const senha=document.getElementById("novaSenha").value;
+    if(!novo || !senha){alert("Preencha os campos"); return;}
+    let usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
+    if(usuarios.find(u=>u.usuario===novo)){alert("Usuário já existe"); return;}
+    usuarios.push({usuario:novo,senha:senha});
+    localStorage.setItem("usuarios",JSON.stringify(usuarios));
+    document.getElementById("novoUsuario").value="";
+    document.getElementById("novaSenha").value="";
+    carregarUsuarios();
+}
 
-    registros.push({
-        nome,
-        dia,
-        mes: mesAtual(),
-        ano: anoAtual(),
-        entrada,
-        almoco,
-        retorno,
-        saidaEstimada,
-        saidaReal: null,
-        status: "aberto",
-        banco: 0
+function carregarUsuarios(){
+    const usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
+    const lista=document.getElementById("listaUsuarios");
+    lista.innerHTML="";
+    usuarios.forEach(u=>{
+        if(u.usuario==="admin") return;
+        const li=document.createElement("li");
+        li.innerHTML=`${u.usuario} <button onclick="resetSenha('${u.usuario}')">Redefinir senha</button>`;
+        lista.appendChild(li);
     });
+}
 
+function resetSenha(usuario){
+    const nova=prompt(`Nova senha para ${usuario}:`);
+    if(!nova) return;
+    let usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
+    const u=usuarios.find(u=>u.usuario===usuario);
+    u.senha=nova;
+    localStorage.setItem("usuarios",JSON.stringify(usuarios));
+    alert("Senha redefinida com sucesso!");
+}
+
+/* REGISTROS */
+function getRegistros(){ 
+    const user=getUsuarioLogado();
+    return JSON.parse(localStorage.getItem(`jornada_${user}`))||[];
+}
+
+function salvar(dados){
+    const user=getUsuarioLogado();
+    localStorage.setItem(`jornada_${user}`,JSON.stringify(dados));
+}
+
+function emMin(hora){const [h,m]=hora.split(":").map(Number); return h*60+m;}
+function emHora(minutos){const h=Math.floor(minutos/60); const m=minutos%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;}
+function formatar(valor){const sinal=valor>=0?"+":"-"; const v=Math.abs(valor); const h=Math.floor(v/60); const m=v%60; return `${sinal}${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;}
+
+function registrar(){
+    const data=document.getElementById("data").value;
+    const entrada=document.getElementById("entrada").value;
+    const almoco=document.getElementById("almoco").value;
+    const retorno=document.getElementById("retorno").value;
+    if(!data||!entrada||!almoco||!retorno){alert("Preencha todos os campos"); return;}
+    const registros=getRegistros();
+    const saidaEstimada=emHora(emMin(entrada)+JORNADA+(emMin(retorno)-emMin(almoco)));
+    registros.push({
+        dia:data.split("-")[2],
+        mes:parseInt(data.split("-")[1]),
+        ano:parseInt(data.split("-")[0]),
+        data,entrada,almoco,retorno,
+        saidaEstimada,saidaReal:null,
+        banco:0,status:"aberto"
+    });
     salvar(registros);
     carregarTudo();
 }
 
-function fechar(index) {
-    const registros = getRegistros();
-    const saida = document.getElementById(`saida_${index}`).value;
-
-    if (!saida) {
-        alert("Informe a saída real");
-        return;
-    }
-
-    const r = registros[index];
-    const total = emMin(saida) - emMin(r.entrada) - (emMin(r.retorno) - emMin(r.almoco));
-
-    r.saidaReal = saida;
-    r.banco = total - JORNADA;
-    r.status = "fechado";
-
+function fecharRegistro(index){
+    const registros=getRegistros();
+    const real=prompt("Informe a hora de saída real (HH:MM):");
+    if(!real) return;
+    registros[index].saidaReal=real;
+    const entradaMin=emMin(registros[index].entrada);
+    const almocoMin=emMin(registros[index].almoco);
+    const retornoMin=emMin(registros[index].retorno);
+    const saidaMin=emMin(real);
+    registros[index].banco=saidaMin-entradaMin-(retornoMin-almocoMin)-JORNADA;
+    registros[index].status="fechado";
     salvar(registros);
     carregarTudo();
 }
 
-function carregarTudo() {
+function carregarAbertos(){
+    const registros=getRegistros().filter(r=>r.status==="aberto");
+    const tbody=document.getElementById("abertos");
+    tbody.innerHTML="";
+    registros.forEach((r,i)=>{
+        const tr=tbody.insertRow();
+        tr.insertCell(0).innerText=r.dia;
+        tr.insertCell(1).innerText=r.entrada;
+        tr.insertCell(2).innerText=r.almoco;
+        tr.insertCell(3).innerText=r.retorno;
+        tr.insertCell(4).innerText=r.saidaEstimada;
+        tr.insertCell(5).innerText=r.saidaReal||"-";
+        tr.insertCell(6).innerText=formatar(r.banco);
+        const btn=document.createElement("button");
+        btn.innerText="Fechar";
+        btn.onclick=()=>fecharRegistro(i);
+        tr.insertCell(7).appendChild(btn);
+    });
+}
+
+function nomeMes(mes){const meses=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]; return meses[mes-1];}
+
+function carregarHistorico(){
+    const container=document.getElementById("historico");
+    container.innerHTML="";
+    const registros=getRegistros().filter(r=>r.status==="fechado");
+    if(registros.length===0){container.innerHTML="<p>Nenhum registro fechado.</p>";return;}
+    const grupos={};
+    registros.forEach(r=>{
+        const chave=`${r.mes}-${r.ano}`;
+        if(!grupos[chave]) grupos[chave]=[];
+        grupos[chave].push(r);
+    });
+    const chavesOrdenadas=Object.keys(grupos).sort((a,b)=>{
+        const [ma,aa]=a.split("-").map(Number);
+        const [mb,ab]=b.split("-").map(Number);
+        return aa!==ab?aa-ab:ma-mb;
+    });
+    chavesOrdenadas.forEach(chave=>{
+        const [mes,ano]=chave.split("-");
+        const registrosMes=grupos[chave];
+        let saldoMes=0;
+        let html=`<h3>📌 ${nomeMes(mes)} / ${ano}</h3>
+                  <table>
+                  <thead><tr>
+                    <th>Dia</th><th>Entrada</th><th>Saída Estimada</th><th>Saída Real</th><th>Banco</th>
+                  </tr></thead><tbody>`;
+        registrosMes.forEach(r=>{
+            saldoMes+=r.banco;
+            html+=`<tr class="fechado">
+                    <td>${r.dia}</td><td>${r.entrada}</td><td>${r.saidaEstimada}</td><td>${r.saidaReal}</td><td>${formatar(r.banco)}</td>
+                   </tr>`;
+        });
+        html+=`</tbody></table><strong>Saldo do mês: ${formatar(saldoMes)}</strong><hr>`;
+        container.innerHTML+=html;
+    });
+}
+
+function carregarTudo(){
     carregarAbertos();
     carregarHistorico();
 }
 
-function carregarAbertos() {
-    const tbody = document.getElementById("abertos");
-    tbody.innerHTML = "";
-
-    getRegistros().forEach((r, i) => {
-        if (r.status === "aberto") {
-            tbody.innerHTML += `
-                <tr class="aberto">
-                    <td>${r.nome}</td>
-                    <td>${r.dia}/${r.mes}/${r.ano}</td>
-                    <td>${r.entrada}</td>
-                    <td>${r.saidaEstimada}</td>
-                    <td><input type="time" id="saida_${i}"></td>
-                    <td><button onclick="fechar(${i})">Fechar</button></td>
-                </tr>
-            `;
-        }
-    });
-}
-
-function carregarHistorico() {
-    const tbody = document.getElementById("historico");
-    tbody.innerHTML = "";
-
-    let saldo = 0;
-
-    getRegistros().forEach(r => {
-        if (r.status === "fechado") {
-            saldo += r.banco;
-            tbody.innerHTML += `
-                <tr class="fechado">
-                    <td>${r.nome}</td>
-                    <td>${r.dia}/${r.mes}/${r.ano}</td>
-                    <td>${r.entrada}</td>
-                    <td>${r.saidaEstimada}</td>
-                    <td>${r.saidaReal}</td>
-                    <td>${formatar(r.banco)}</td>
-                </tr>
-            `;
-        }
-    });
-
-    saldoMensal.innerText = `Saldo do mês: ${formatar(saldo)}`;
-}
-
-function getRegistros() {
-    return JSON.parse(localStorage.getItem("jornada")) || [];
-}
-function salvar(d) {
-    localStorage.setItem("jornada", JSON.stringify(d));
-}
-
-function emMin(h) {
-    const [hh, mm] = h.split(":").map(Number);
-    return hh * 60 + mm;
-}
-function emHora(m) {
-    return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
-}
-function formatar(m) {
-    const s = m >= 0 ? "+" : "-";
-    m = Math.abs(m);
-    return `${s}${Math.floor(m/60)}h ${m%60}m`;
-}
-function mesAtual() {
-    return new Date().getMonth() + 1;
-}
-function anoAtual() {
-    return new Date().getFullYear();
-}
-
-// atalhos
-const nomeInput = document.getElementById("nome");
-const diaInput = document.getElementById("dia");
-const entradaInput = document.getElementById("entrada");
-const almocoInput = document.getElementById("almoco");
-const retornoInput = document.getElementById("retorno");
+/* INICIALIZAÇÃO */
+document.addEventListener("DOMContentLoaded",()=>{
+    if(!getUsuarioLogado()) document.getElementById("login").style.display="block";
+    else mostrarSistema();
+});
 </script>
-
 </body>
 </html>
