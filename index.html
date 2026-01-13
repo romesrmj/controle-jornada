@@ -1,1 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Controle de Jornada</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    padding: 20px;
+}
+h1, h2 {
+    text-align: center;
+}
+.container {
+    background: #fff;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 900px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,.1);
+}
+input, select, button {
+    width: 100%;
+    padding: 8px;
+    margin: 6px 0;
+}
+button {
+    background: #4CAF50;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+button:hover {
+    background: #45a049;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+th {
+    background: #eee;
+}
+.aberto {
+    background: #fff3cd;
+}
+.fechado {
+    background: #d4edda;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Controle de Jornada de Trabalho</h1>
+
+<div class="container">
+    <h2>Registrar Jornada</h2>
+
+    <input id="nome" placeholder="Nome do colaborador">
+
+    <select id="dia">
+        <script>
+            for (let i = 1; i <= 31; i++) {
+                document.write(`<option value="${i}">${i}</option>`);
+            }
+        </script>
+    </select>
+
+    <label>Entrada</label>
+    <input type="time" id="entrada">
+
+    <label>Início do almoço</label>
+    <input type="time" id="almoco">
+
+    <label>Retorno do almoço</label>
+    <input type="time" id="retorno">
+
+    <button onclick="registrar()">Registrar</button>
+</div>
+
+<div class="container">
+    <h2>Registros Abertos (Fechar no dia seguinte)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Data</th>
+                <th>Entrada</th>
+                <th>Saída Estimada</th>
+                <th>Saída Real</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody id="abertos"></tbody>
+    </table>
+</div>
+
+<div class="container">
+    <h2>Histórico</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Data</th>
+                <th>Entrada</th>
+                <th>Saída Estimada</th>
+                <th>Saída Real</th>
+                <th>Banco</th>
+            </tr>
+        </thead>
+        <tbody id="historico"></tbody>
+    </table>
+
+    <h3 id="saldoMensal"></h3>
+</div>
+
+<script>
+const JORNADA = 8 * 60 + 48;
+
+document.addEventListener("DOMContentLoaded", carregarTudo);
+
+function registrar() {
+    const nome = nomeInput.value;
+    const dia = diaInput.value;
+    const entrada = entradaInput.value;
+    const almoco = almocoInput.value;
+    const retorno = retornoInput.value;
+
+    if (!nome || !entrada || !almoco || !retorno) {
+        alert("Preencha todos os campos");
+        return;
+    }
+
+    const registros = getRegistros();
+    const saidaEstimada = emHora(
+        emMin(entrada) + JORNADA + (emMin(retorno) - emMin(almoco))
+    );
+
+    registros.push({
+        nome,
+        dia,
+        mes: mesAtual(),
+        ano: anoAtual(),
+        entrada,
+        almoco,
+        retorno,
+        saidaEstimada,
+        saidaReal: null,
+        status: "aberto",
+        banco: 0
+    });
+
+    salvar(registros);
+    carregarTudo();
+}
+
+function fechar(index) {
+    const registros = getRegistros();
+    const saida = document.getElementById(`saida_${index}`).value;
+
+    if (!saida) {
+        alert("Informe a saída real");
+        return;
+    }
+
+    const r = registros[index];
+    const total = emMin(saida) - emMin(r.entrada) - (emMin(r.retorno) - emMin(r.almoco));
+
+    r.saidaReal = saida;
+    r.banco = total - JORNADA;
+    r.status = "fechado";
+
+    salvar(registros);
+    carregarTudo();
+}
+
+function carregarTudo() {
+    carregarAbertos();
+    carregarHistorico();
+}
+
+function carregarAbertos() {
+    const tbody = document.getElementById("abertos");
+    tbody.innerHTML = "";
+
+    getRegistros().forEach((r, i) => {
+        if (r.status === "aberto") {
+            tbody.innerHTML += `
+                <tr class="aberto">
+                    <td>${r.nome}</td>
+                    <td>${r.dia}/${r.mes}/${r.ano}</td>
+                    <td>${r.entrada}</td>
+                    <td>${r.saidaEstimada}</td>
+                    <td><input type="time" id="saida_${i}"></td>
+                    <td><button onclick="fechar(${i})">Fechar</button></td>
+                </tr>
+            `;
+        }
+    });
+}
+
+function carregarHistorico() {
+    const tbody = document.getElementById("historico");
+    tbody.innerHTML = "";
+
+    let saldo = 0;
+
+    getRegistros().forEach(r => {
+        if (r.status === "fechado") {
+            saldo += r.banco;
+            tbody.innerHTML += `
+                <tr class="fechado">
+                    <td>${r.nome}</td>
+                    <td>${r.dia}/${r.mes}/${r.ano}</td>
+                    <td>${r.entrada}</td>
+                    <td>${r.saidaEstimada}</td>
+                    <td>${r.saidaReal}</td>
+                    <td>${formatar(r.banco)}</td>
+                </tr>
+            `;
+        }
+    });
+
+    saldoMensal.innerText = `Saldo do mês: ${formatar(saldo)}`;
+}
+
+function getRegistros() {
+    return JSON.parse(localStorage.getItem("jornada")) || [];
+}
+function salvar(d) {
+    localStorage.setItem("jornada", JSON.stringify(d));
+}
+
+function emMin(h) {
+    const [hh, mm] = h.split(":").map(Number);
+    return hh * 60 + mm;
+}
+function emHora(m) {
+    return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
+}
+function formatar(m) {
+    const s = m >= 0 ? "+" : "-";
+    m = Math.abs(m);
+    return `${s}${Math.floor(m/60)}h ${m%60}m`;
+}
+function mesAtual() {
+    return new Date().getMonth() + 1;
+}
+function anoAtual() {
+    return new Date().getFullYear();
+}
+
+// atalhos
+const nomeInput = document.getElementById("nome");
+const diaInput = document.getElementById("dia");
+const entradaInput = document.getElementById("entrada");
+const almocoInput = document.getElementById("almoco");
+const retornoInput = document.getElementById("retorno");
+</script>
+
+</body>
+</html>
