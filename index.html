@@ -5,18 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Jornada - Multiusuário com Admin</title>
 <style>
-body { font-family: Arial, sans-serif; margin:20px; background:#f4f4f4;}
-h1,h2,h3{text-align:center;}
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f4f4f4;}
+h1,h2,h3,h4{text-align:center;margin:10px 0;}
 .form-container{max-width:500px;margin:20px auto;padding:20px;background:#fff;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
-input,select,button{width:100%;padding:10px;margin:10px 0;font-size:16px;}
+input,select,button{width:100%;padding:10px;margin:8px 0;font-size:16px;box-sizing:border-box;}
 button{background:#4CAF50;color:white;border:none;cursor:pointer;}
 button:hover{background:#45a049;}
 table{width:100%;border-collapse:collapse;margin-bottom:20px;}
-th,td{border:1px solid #ddd;padding:10px;text-align:center;}
+th,td{border:1px solid #ddd;padding:8px;text-align:center;font-size:14px;}
 th{background:#f2f2f2;}
 #sistema{display:none;}
 #logout{float:right;margin-right:20px;cursor:pointer;color:#f00;font-weight:bold;}
 .fechado{background-color:#e0ffe0;}
+@media(max-width:600px){
+    th,td{font-size:12px;padding:6px;}
+    input,select,button{font-size:14px;padding:8px;}
+}
 </style>
 </head>
 <body>
@@ -38,31 +42,30 @@ th{background:#f2f2f2;}
     <span id="logout" onclick="logout()">Sair</span>
     <h2>Bem-vindo, <span id="nomeUsuario"></span></h2>
 
+    <!-- ADMIN PANEL -->
     <div id="adminPanel" class="form-container" style="display:none;">
         <h3>Admin - Gerenciar Usuários</h3>
         <input type="text" id="novoUsuario" placeholder="Novo usuário">
         <input type="password" id="novaSenha" placeholder="Senha do novo usuário">
         <button onclick="criarUsuario()">Criar Usuário</button>
         <h4>Lista de Usuários</h4>
-        <ul id="listaUsuarios"></ul>
+        <ul id="listaUsuarios" style="list-style:none;padding:0;"></ul>
     </div>
 
+    <!-- REGISTRO DE PONTO -->
     <div class="form-container">
         <label>Data do Registro:</label>
         <input type="date" id="data">
-
         <label>Entrada:</label>
         <input type="time" id="entrada">
-
         <label>Almoço:</label>
         <input type="time" id="almoco">
-
         <label>Retorno:</label>
         <input type="time" id="retorno">
-
         <button onclick="registrar()">Registrar</button>
     </div>
 
+    <!-- REGISTROS ABERTOS -->
     <div class="form-container">
         <h2>Registros Abertos</h2>
         <table>
@@ -75,6 +78,7 @@ th{background:#f2f2f2;}
         </table>
     </div>
 
+    <!-- HISTÓRICO -->
     <div class="form-container">
         <h2>Histórico</h2>
         <div id="historico"></div>
@@ -82,24 +86,36 @@ th{background:#f2f2f2;}
 </div>
 
 <script>
-/* CONFIGURAÇÃO */
-const JORNADA = 8*60+48;
+/* ---------- CONFIGURAÇÃO ---------- */
+const JORNADA = 8*60+48; // 8h48
 
-/* USUÁRIOS INICIAIS */
-if(!localStorage.getItem("usuarios")){
-    localStorage.setItem("usuarios",JSON.stringify([
-        {usuario:"admin",senha:"91297686"},
-        {usuario:"romes",senha:"91297686"},
-        {usuario:"eduardosantana",senha:"ED123456"}
-    ]));
+/* ---------- FUNÇÃO DE HASH (SHA-256) ---------- */
+async function hashSenha(senha){
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest("SHA-256", enc.encode(senha));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-/* LOGIN */
-function tentarLogin(){
-    const usuario=document.getElementById("usuario").value;
+/* ---------- USUÁRIOS INICIAIS ---------- */
+(async function initUsuarios(){
+    if(!localStorage.getItem("usuarios")){
+        const usuarios=[
+            {usuario:"admin",senha:await hashSenha("91297686")},
+            {usuario:"romes",senha:await hashSenha("91297686")},
+			{usuario:"eduardosantana",senha:await hashSenha("ED123456")},
+        ];
+        localStorage.setItem("usuarios",JSON.stringify(usuarios));
+    }
+})();
+
+/* ---------- LOGIN ---------- */
+async function tentarLogin(){
+    const usuario=document.getElementById("usuario").value.trim();
     const senha=document.getElementById("senha").value;
+    if(!usuario||!senha){alert("Preencha os campos"); return;}
+    const hash=await hashSenha(senha);
     const usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
-    const valido=usuarios.find(u=>u.usuario===usuario && u.senha===senha);
+    const valido=usuarios.find(u=>u.usuario===usuario && u.senha===hash);
     if(!valido){alert("Usuário ou senha inválidos"); return;}
     localStorage.setItem("usuarioLogado",usuario);
     mostrarSistema();
@@ -123,14 +139,14 @@ function mostrarSistema(){
     carregarTudo();
 }
 
-/* ADMIN: GERENCIAR USUÁRIOS */
-function criarUsuario(){
+/* ---------- ADMIN: GERENCIAR USUÁRIOS ---------- */
+async function criarUsuario(){
     const novo=document.getElementById("novoUsuario").value.trim();
     const senha=document.getElementById("novaSenha").value;
     if(!novo || !senha){alert("Preencha os campos"); return;}
     let usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
     if(usuarios.find(u=>u.usuario===novo)){alert("Usuário já existe"); return;}
-    usuarios.push({usuario:novo,senha:senha});
+    usuarios.push({usuario:novo,senha:await hashSenha(senha)});
     localStorage.setItem("usuarios",JSON.stringify(usuarios));
     document.getElementById("novoUsuario").value="";
     document.getElementById("novaSenha").value="";
@@ -144,22 +160,22 @@ function carregarUsuarios(){
     usuarios.forEach(u=>{
         if(u.usuario==="admin") return;
         const li=document.createElement("li");
-        li.innerHTML=`${u.usuario} <button onclick="resetSenha('${u.usuario}')">Redefinir senha</button>`;
+        li.innerHTML=`${u.usuario} <button onclick="resetSenhaPrompt('${u.usuario}')">Redefinir senha</button>`;
         lista.appendChild(li);
     });
 }
 
-function resetSenha(usuario){
+async function resetSenhaPrompt(usuario){
     const nova=prompt(`Nova senha para ${usuario}:`);
     if(!nova) return;
     let usuarios=JSON.parse(localStorage.getItem("usuarios"))||[];
     const u=usuarios.find(u=>u.usuario===usuario);
-    u.senha=nova;
+    u.senha=await hashSenha(nova);
     localStorage.setItem("usuarios",JSON.stringify(usuarios));
     alert("Senha redefinida com sucesso!");
 }
 
-/* REGISTROS */
+/* ---------- REGISTROS ---------- */
 function getRegistros(){ 
     const user=getUsuarioLogado();
     return JSON.parse(localStorage.getItem(`jornada_${user}`))||[];
@@ -272,7 +288,7 @@ function carregarTudo(){
     carregarHistorico();
 }
 
-/* INICIALIZAÇÃO */
+/* ---------- INICIALIZAÇÃO ---------- */
 document.addEventListener("DOMContentLoaded",()=>{
     if(!getUsuarioLogado()) document.getElementById("login").style.display="block";
     else mostrarSistema();
